@@ -1,0 +1,105 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  SlackDoorBellSAM
+
+  App that takes Images from S3 and runs them through face/object Rekognition and then uploads the results to a Slack channel.
+
+# More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
+
+# TODOs:
+# Add CV2 Layer to Lambda
+# Add IAM S3: Read Privs
+# Add IAM DynamoDB Read/Write Privs
+# Add IAM SSM Param Access
+# Add IAM Rekognition Access
+# Auto Create SlackDoorBellConfig in with Encryption in SSM w/ reasonable defaults.
+
+Globals:
+  Function:
+    Timeout: 60
+
+Resources:
+  SlackDoorBellFunction:
+    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+    Layers:
+      - arn:aws:lambda:us-west-1:228433138922:layer:OpenCV:1
+    Properties:
+      CodeUri: slack_doorbell/
+      Handler: app.lambda_handler
+      Runtime: python3.7
+      Environment:
+        Variables: 
+          PROCESS_DB_TBL: !Ref DynamoDBTableProcessedHashesTable
+          REKOGNITION_DB_TBL: !Ref DynamoDBTableRekognitionCollectionTable
+          CONFIG_PARAM: SlackDoorBellConfig 
+      Events:
+        ImageUploaded:
+          Type: S3
+          Properties:
+            Bucket: !Ref SlackDoorBellBucket
+            Events: s3:ObjectCreated:*
+            Filter:
+              S3Key:
+                Rules:
+                  - Name: suffix
+                    Value: .jpg
+  DynamoDBTableProcessedHashesTableParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: ddb_processed_hashes_table_name
+      Type: String
+      Value: !Ref DynamoDBTableProcessedHashesTable
+      Description: SSM Parameter for DynamoDBTableProcessedHashesTable table name.               
+
+  SlackDoorBellBucket:
+    Type: AWS::S3::Bucket
+
+  DynamoDBTableProcessedHashesTable:
+    Type: AWS::DynamoDB::Table
+    Properties: 
+      AttributeDefinitions: 
+        - AttributeName: hash
+          AttributeType: S
+      KeySchema: 
+        - AttributeName: hash
+          KeyType: HASH
+      ProvisionedThroughput: 
+        ReadCapacityUnits: 5
+        WriteCapacityUnits: 5
+      TimeToLiveSpecification: 
+        AttributeName: ttl
+        Enabled: true
+
+  DynamoDBTableRekognitionCollectionTable:
+    Type: AWS::DynamoDB::Table
+    Properties: 
+      AttributeDefinitions: 
+        - AttributeName: RekognitionId
+          AttributeType: S
+      KeySchema: 
+        - AttributeName: RekognitionId
+          KeyType: HASH
+      ProvisionedThroughput: 
+        ReadCapacityUnits: 5
+        WriteCapacityUnits: 1
+  
+  LambdaInvokePermission:
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      FunctionName: !GetAtt SlackDoorBellFunction.Arn
+      Action: 'lambda:InvokeFunction'
+      Principal: 's3.amazonaws.com'
+      SourceAccount: !Sub ${AWS::AccountId}
+      SourceArn: !GetAtt SlackDoorBellBucket.Arn        
+
+Outputs:
+  # ServerlessRestApi is an implicit API created out of Events key under Serverless::Function
+  # Find out more about other implicit resources you can reference within SAM
+  # https://github.com/awslabs/serverless-application-model/blob/master/docs/internals/generated_resources.rst#api
+  SlackDoorBellFunction:
+    Description: "SlackDoorBell Function ARN"
+    Value: !GetAtt SlackDoorBellFunction.Arn
+  SlackDoorBellFunctionIamRole:
+    Description: "Implicit IAM Role created for SlackDoorBellFunction"
+    Value: !GetAtt SlackDoorBellFunctionRole.Arn
