@@ -206,6 +206,59 @@ Outputs:
   SlackDoorBellFunction:
     Description: "SlackDoorBell Function ARN"
     Value: !GetAtt SlackDoorBellFunction.Arn
+
+  FaceSeederFunction:
+    Description: "FaceSeeder Function ARN"
+    Value: !GetAtt FaceSeederFunction.Arn
+
   SlackDoorBellFunctionIamRole:
     Description: "Implicit IAM Role created for SlackDoorBellFunction"
     Value: !GetAtt SlackDoorBellFunctionRole.Arn
+
+  FaceSeederFunctionIamRole:
+    Description: "Implicit IAM Role created for FaceSeederFunction"
+    Value: !GetAtt FaceSeederFunctionRole.Arn
+
+  DynamoDBTableProcessedHashesTableParameter:
+    Description: "SSM Parameter for DynamoDBTableProcessedHashesTable table name"
+    Value: !Ref DynamoDBTableProcessedHashesTableParameter
+  
+  DynamoDBTableRekognitionCollectionTableParameter:
+    Description: "SSM Parameter for DynamoDBTableRekognitionCollectionTable table name"
+    Value: !Ref DynamoDBTableRekognitionCollectionTableParameter
+  
+  SlackDoorBellBucketParameter:
+    Description: "SSM Parameter for SlackDoorBellBucket S3 Bucket name"
+    Value: !Ref SlackDoorBellBucketParameter
+  
+  FaceSeederBucketParameter:    
+    Description: "SSM Parameter for FaceSeederBucket S3 Bucket name"
+    Value: !Ref FaceSeederBucketParameter
+
+  SlackDoorBellBucket:
+    Description: "S3 Bucket for receiving images for processing to slack"
+    Value: !GetAtt SlackDoorBellBucket.Arn
+
+  FaceSeederBucket:
+    Description: "S3 Bucket for receiving images to build a face index"
+    Value: !GetAtt FaceSeederBucket.Arn
+
+  DynamoDBTableProcessedHashesTable:
+    Description: "DynamoDB Table for storing processed image hashes w/ 24 hour TTL"
+    Value: !GetAtt DynamoDBTableProcessedHashesTable.Arn
+
+  DynamoDBTableRekognitionCollectionTable:
+    Description: "DynamoDB Table for mapping names to Rekognition IDs"
+    Value: !GetAtt DynamoDBTableRekognitionCollectionTable.Arn
+
+  SlackDoorBellFunctionLambdaInvokePermission:
+    Description: "Required Lambda Permission for S3 Triggers to Work"
+    Value: !Ref SlackDoorBellFunctionLambdaInvokePermission
+
+  FaceSeederFunctionLambdaInvokePermission:
+    Description: "Required Lambda Permission for S3 Triggers to Work"
+    Value: !Ref FaceSeederFunctionLambdaInvokePermission
+
+  OpenCVLayer:
+    Description: "OpenCV Python Library for image annotation"
+    Value: !Ref OpenCVLayer
