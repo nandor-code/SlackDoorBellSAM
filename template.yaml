@@ -8,7 +8,6 @@ Description: >
 # More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
 
 # TODOs:
-# Add CV2 Layer to Lambda
 # Add IAM S3: Read Privs
 # Add IAM DynamoDB Read/Write Privs
 # Add IAM SSM Param Access
@@ -22,12 +21,12 @@ Globals:
 Resources:
   SlackDoorBellFunction:
     Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
-    Layers:
-      - arn:aws:lambda:us-west-1:228433138922:layer:OpenCV:1
     Properties:
       CodeUri: slack_doorbell/
       Handler: app.lambda_handler
       Runtime: python3.7
+      Layers:
+        - arn:aws:lambda:us-west-1:228433138922:layer:OpenCV:1
       Environment:
         Variables: 
           PROCESS_DB_TBL: !Ref DynamoDBTableProcessedHashesTable
@@ -44,15 +43,94 @@ Resources:
                 Rules:
                   - Name: suffix
                     Value: .jpg
+      Policies:
+        - AWSLambdaExecute
+        - Version: '2012-10-17' 
+          Statement:
+            - Effect: Allow
+              Action:
+                - s3:GetObject
+                - s3:GetObjectACL
+              Resource: '*'
+        - DynamoDBCrudPolicy:
+            TableName: !Ref DynamoDBTableProcessedHashesTable
+        - RekognitionReadPolicy:
+            CollectionId: ntsj_collection
+        - RekognitionDetectOnlyPolicy: {}
+        - DynamoDBReadPolicy:
+            TableName: !Ref DynamoDBTableRekognitionCollectionTable
+        - SSMParameterReadPolicy:
+            ParameterName: SlackDoorBellConfig
+  FaceSeederFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: face_seeder/
+      Handler: app.lambda_handler
+      Runtime: python3.7
+      Environment:
+        Variables: 
+          REKOGNITION_DB_TBL: !Ref DynamoDBTableRekognitionCollectionTable
+          CONFIG_PARAM: SlackDoorBellConfig 
+      Events:
+        ImageUploaded:
+          Type: S3
+          Properties:
+            Bucket: !Ref FaceSeederBucket
+            Events: s3:ObjectCreated:*
+            Filter:
+              S3Key:
+                Rules:
+                  - Name: suffix
+                    Value: .jpg
+      Policies:
+        - AWSLambdaExecute
+        - Version: '2012-10-17' 
+          Statement:
+            - Effect: Allow
+              Action:
+                - s3:GetObject
+                - s3:GetObjectACL
+              Resource: '*'
+        - DynamoDBCrudPolicy:
+            TableName: !Ref DynamoDBTableRekognitionCollectionTable
+        - RekognitionWriteOnlyAccessPolicy:
+            CollectionId: ntsj_collection
+        - SSMParameterReadPolicy:
+            ParameterName: SlackDoorBellConfig            
+
   DynamoDBTableProcessedHashesTableParameter:
     Type: AWS::SSM::Parameter
     Properties:
       Name: ddb_processed_hashes_table_name
       Type: String
       Value: !Ref DynamoDBTableProcessedHashesTable
-      Description: SSM Parameter for DynamoDBTableProcessedHashesTable table name.               
+      Description: SSM Parameter for DynamoDBTableProcessedHashesTable table name.
+  DynamoDBTableRekognitionCollectionTableParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: ddb_rekognition_table_name
+      Type: String
+      Value: !Ref DynamoDBTableRekognitionCollectionTable
+      Description: SSM Parameter for DynamoDBTableRekognitionCollectionTable table name.                   
+  SlackDoorBellBucketParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: slack_door_bell_bucket
+      Type: String
+      Value: !Ref SlackDoorBellBucket
+      Description: SSM Parameter for SlackDoorBellBucket S3 Bucket name.  
+  FaceSeederBucketParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: face_seeder_bucket
+      Type: String
+      Value: !Ref FaceSeederBucket
+      Description: SSM Parameter for FaceSeederBucket S3 Bucket name.        
 
   SlackDoorBellBucket:
+    Type: AWS::S3::Bucket
+
+  FaceSeederBucket:
     Type: AWS::S3::Bucket
 
   DynamoDBTableProcessedHashesTable:
@@ -85,13 +163,22 @@ Resources:
         WriteCapacityUnits: 1
   
   LambdaInvokePermission:
-    Type: 'AWS::Lambda::Permission'
+    Type: AWS::Lambda::Permission
     Properties:
       FunctionName: !GetAtt SlackDoorBellFunction.Arn
       Action: 'lambda:InvokeFunction'
       Principal: 's3.amazonaws.com'
       SourceAccount: !Sub ${AWS::AccountId}
-      SourceArn: !GetAtt SlackDoorBellBucket.Arn        
+      SourceArn: !GetAtt SlackDoorBellBucket.Arn       
+      
+  LambdaInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt FaceSeederFunction.Arn
+      Action: 'lambda:InvokeFunction'
+      Principal: 's3.amazonaws.com'
+      SourceAccount: !Sub ${AWS::AccountId}
+      SourceArn: !GetAtt FaceSeederBucket.Arn         
 
 Outputs:
   # ServerlessRestApi is an implicit API created out of Events key under Serverless::Function
