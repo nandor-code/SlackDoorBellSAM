@@ -170,7 +170,7 @@ Resources:
         ReadCapacityUnits: 5
         WriteCapacityUnits: 1
   
-  LambdaInvokePermission:
+  SlackDoorBellFunctionLambdaInvokePermission:
     Type: AWS::Lambda::Permission
     Properties:
       FunctionName: !GetAtt SlackDoorBellFunction.Arn
@@ -179,7 +179,7 @@ Resources:
       SourceAccount: !Sub ${AWS::AccountId}
       SourceArn: !GetAtt SlackDoorBellBucket.Arn       
       
-  LambdaInvokePermission:
+  FaceSeederFunctionLambdaInvokePermission:
     Type: AWS::Lambda::Permission
     Properties:
       FunctionName: !GetAtt FaceSeederFunction.Arn
