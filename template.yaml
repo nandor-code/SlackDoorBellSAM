@@ -30,7 +30,7 @@ Resources:
       Handler: app.lambda_handler
       Runtime: python3.7
       Layers:
-        - arn:aws:lambda:us-west-1:228433138922:layer:OpenCV:1
+        - !Ref OpenCVLayer
       Environment:
         Variables: 
           PROCESS_DB_TBL: !Ref DynamoDBTableProcessedHashesTable
@@ -65,6 +65,7 @@ Resources:
             TableName: !Ref DynamoDBTableRekognitionCollectionTable
         - SSMParameterReadPolicy:
             ParameterName: SlackDoorBellConfig
+  
   FaceSeederFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -109,6 +110,7 @@ Resources:
       Type: String
       Value: !Ref DynamoDBTableProcessedHashesTable
       Description: SSM Parameter for DynamoDBTableProcessedHashesTable table name.
+  
   DynamoDBTableRekognitionCollectionTableParameter:
     Type: AWS::SSM::Parameter
     Properties:
@@ -116,6 +118,7 @@ Resources:
       Type: String
       Value: !Ref DynamoDBTableRekognitionCollectionTable
       Description: SSM Parameter for DynamoDBTableRekognitionCollectionTable table name.                   
+  
   SlackDoorBellBucketParameter:
     Type: AWS::SSM::Parameter
     Properties:
@@ -123,6 +126,7 @@ Resources:
       Type: String
       Value: !Ref SlackDoorBellBucket
       Description: SSM Parameter for SlackDoorBellBucket S3 Bucket name.  
+  
   FaceSeederBucketParameter:
     Type: AWS::SSM::Parameter
     Properties:
@@ -182,7 +186,18 @@ Resources:
       Action: 'lambda:InvokeFunction'
       Principal: 's3.amazonaws.com'
       SourceAccount: !Sub ${AWS::AccountId}
-      SourceArn: !GetAtt FaceSeederBucket.Arn         
+      SourceArn: !GetAtt FaceSeederBucket.Arn     
+  
+  OpenCVLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+        LayerName: slack-doorbell-dependencies
+        Description: Dependencies for SlackDoorBell
+        ContentUri: dependencies/
+        CompatibleRuntimes:
+          - python3.7
+        LicenseInfo: 'MIT'
+        RetentionPolicy: Retain          
 
 Outputs:
   # ServerlessRestApi is an implicit API created out of Events key under Serverless::Function
