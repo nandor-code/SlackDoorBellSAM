@@ -7,11 +7,10 @@ Description: >
 
 # More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
 
+# Note: You must manually config a SlackDoorBellConfig SecureString value in SSM in the following format:
+# '{"token": "xoxb-xxxxxxxx","collection": "xyz_collection","channel": "general"}'
+
 # TODOs:
-# Add IAM S3: Read Privs
-# Add IAM DynamoDB Read/Write Privs
-# Add IAM SSM Param Access
-# Add IAM Rekognition Access
 # Auto Create SlackDoorBellConfig in with Encryption in SSM w/ reasonable defaults.
 
 Globals:
