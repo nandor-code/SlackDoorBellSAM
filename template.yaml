@@ -1,7 +1,7 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Description: >
-  SlackDoorBellSAM
+  SlackDoorBell
 
   App that takes Images from S3 and runs them through face/object Rekognition and then uploads the results to a Slack channel.
 
@@ -17,6 +17,29 @@ Description: >
 
 # TODOs:
 # Auto Create SlackDoorBellConfig in with Encryption in SSM w/ reasonable defaults.
+
+Metadata:
+  AWS::ServerlessRepo::Application:
+    Name: SlackDoorBell
+    Description: > 
+        Takes images from an S3 Bucket runs them through Face/Object Rekognition, applies annotations and then uploads the resulting image to a private or public slack channel.
+
+        Requires a separate Slack integration and image source such as Zone Minder.
+    Author: Nandor Szots
+    SpdxLicenseId: Apache-2.0
+    ReadmeUrl: README.md
+    LicenseUrl: LICENSE.txt
+    HomePageUrl: https://github.com/zoltaroth/SlackDoorBellSAM
+    SemanticVersion: 1.0.0
+    SourceCodeUrl: https://github.com/zoltaroth/SlackDoorBellSAM
+    Labels: 
+      - slack 
+      - s3 
+      - rekognition 
+      - security 
+      - camera 
+      - detection 
+      - zoneminder
 
 Globals:
   Function:
