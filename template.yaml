@@ -10,6 +10,11 @@ Description: >
 # Note: You must manually config a SlackDoorBellConfig SecureString value in SSM in the following format:
 # '{"token": "xoxb-xxxxxxxx","collection": "xyz_collection","channel": "general"}'
 
+# Note: You must create a rekognition collection before you can use this app:
+# aws rekognition create-collection --collection-id xyz_collection --region eu-west-1 
+# the id must match what is in your config string above.
+# it must also be added to the RekognitionPolicies in Two place in in this file - search for _collection.
+
 # TODOs:
 # Auto Create SlackDoorBellConfig in with Encryption in SSM w/ reasonable defaults.
 
