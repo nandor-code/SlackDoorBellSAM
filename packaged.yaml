@@ -21,7 +21,7 @@ Metadata:
     ReadmeUrl: s3://published-apps/c338a9a70af8b34598d6496397296ee5
     LicenseUrl: s3://published-apps/d41d8cd98f00b204e9800998ecf8427e
     HomePageUrl: https://github.com/zoltaroth/SlackDoorBellSAM
-    SemanticVersion: 1.0.0
+    SemanticVersion: 1.1.0
     SourceCodeUrl: https://github.com/zoltaroth/SlackDoorBellSAM
     Labels:
     - slack
@@ -31,6 +31,7 @@ Metadata:
     - camera
     - detection
     - zoneminder
+    - doorbell
 Globals:
   Function:
     Timeout: 60
@@ -38,7 +39,7 @@ Resources:
   SlackDoorBellFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: s3://published-apps/417a256c65e3fab9b6e429637dc7e0ae
+      CodeUri: s3://published-apps/acf0ea86f131498acfb6ad8ba494f601
       Handler: app.lambda_handler
       Runtime: python3.7
       Layers:
@@ -85,7 +86,7 @@ Resources:
   FaceSeederFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: s3://published-apps/6502a8072fd5c1d687131a0e9eaa7f1d
+      CodeUri: s3://published-apps/c5b6999c913300d73d543bef53b86d46
       Handler: app.lambda_handler
       Runtime: python3.7
       Environment:

@@ -5,6 +5,7 @@ from decimal import Decimal
 import json
 import os
 import urllib
+import datetime
 
 print('Loading function')
 
@@ -29,7 +30,6 @@ REKOGNITION_DB_TBL  = os.environ['REKOGNITION_DB_TBL']  # DynamoDB Table that St
 # --------------- Helper Functions ------------------
 
 def index_faces(bucket, key):
-
     response = rekognition.index_faces(
         Image={"S3Object":
             {"Bucket": bucket,
@@ -39,13 +39,23 @@ def index_faces(bucket, key):
     return response
     
 def update_index(tableName,faceId, fullName):
-    response = dynamodb.put_item(
-        TableName=tableName,
-        Item={
-            'RekognitionId': {'S': faceId},
-            'FullName': {'S': fullName}
-            }
-        ) 
+    createdTime = datetime.datetime.now().isoformat()
+    try:
+        response = dynamodb.put_item(
+                ConditionExpression='attribute_not_exists(RekognitionId)',
+                TableName=tableName,
+                Item={
+                    'RekognitionId': {'S': faceId},
+                    'FullName': {'S': fullName},
+                    'CreatedTime':{'S': str(createdTime)}
+                    }
+                )
+                
+    except Exception as e:
+        if e.response['Error']['Code'] != 'ConditionalCheckFailedException':
+            print (e)            
+        else:
+            print ("This key already existed - ignoring.")            
     
 # --------------- Main handler ------------------
 
