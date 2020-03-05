@@ -21,7 +21,7 @@ Metadata:
     ReadmeUrl: s3://published-apps/c338a9a70af8b34598d6496397296ee5
     LicenseUrl: s3://published-apps/d41d8cd98f00b204e9800998ecf8427e
     HomePageUrl: https://github.com/zoltaroth/SlackDoorBellSAM
-    SemanticVersion: 1.1.0
+    SemanticVersion: 1.0.0
     SourceCodeUrl: https://github.com/zoltaroth/SlackDoorBellSAM
     Labels:
     - slack
@@ -219,7 +219,7 @@ Resources:
   OpenCVLayer:
     Type: AWS::Serverless::LayerVersion
     Properties:
-      LayerName: slack-doorbell-dependencies
+      LayerName: slack-doorbell-opencv
       Description: Dependencies for SlackDoorBell
       ContentUri: s3://published-apps/80f5b285362a7d7962b79d8961967844
       CompatibleRuntimes:

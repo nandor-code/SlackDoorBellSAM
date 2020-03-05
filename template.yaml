@@ -215,7 +215,7 @@ Resources:
   OpenCVLayer:
     Type: AWS::Serverless::LayerVersion
     Properties:
-        LayerName: slack-doorbell-dependencies
+        LayerName: slack-doorbell-opencv
         Description: Dependencies for SlackDoorBell
         ContentUri: dependencies/
         CompatibleRuntimes:
