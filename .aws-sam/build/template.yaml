@@ -1,0 +1,305 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: 'SlackDoorBell
+
+  App that takes Images from S3 and runs them through face/object Rekognition and
+  then uploads the results to a Slack channel.
+
+  '
+Metadata:
+  AWS::ServerlessRepo::Application:
+    Name: SlackDoorBell
+    Description: 'Takes images from an S3 Bucket runs them through Face/Object Rekognition,
+      applies annotations and then uploads the resulting image to a private or public
+      slack channel.
+
+      Requires a separate Slack integration and image source such as Zone Minder.
+
+      '
+    Author: Nandor Szots
+    SpdxLicenseId: Apache-2.0
+    ReadmeUrl: ..\..\README.md
+    LicenseUrl: ..\..\LICENSE.txt
+    HomePageUrl: https://github.com/zoltaroth/SlackDoorBellSAM
+    SemanticVersion: 1.0.0
+    SourceCodeUrl: https://github.com/zoltaroth/SlackDoorBellSAM
+    Labels:
+    - slack
+    - s3
+    - rekognition
+    - security
+    - camera
+    - detection
+    - zoneminder
+    - doorbell
+Globals:
+  Function:
+    Timeout: 60
+Resources:
+  SlackDoorBellFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: SlackDoorBellFunction
+      Handler: app.lambda_handler
+      Runtime: python3.7
+      Layers:
+      - Ref: OpenCVLayer
+      Environment:
+        Variables:
+          PROCESS_DB_TBL:
+            Ref: DynamoDBTableProcessedHashesTable
+          REKOGNITION_DB_TBL:
+            Ref: DynamoDBTableRekognitionCollectionTable
+          CONFIG_PARAM: SlackDoorBellConfig
+      Events:
+        ImageUploaded:
+          Type: S3
+          Properties:
+            Bucket:
+              Ref: SlackDoorBellBucket
+            Events: s3:ObjectCreated:*
+            Filter:
+              S3Key:
+                Rules:
+                - Name: suffix
+                  Value: .jpg
+      Policies:
+      - AWSLambdaExecute
+      - Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Action:
+          - s3:GetObject
+          - s3:GetObjectACL
+          Resource: '*'
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: DynamoDBTableProcessedHashesTable
+      - RekognitionReadPolicy:
+          CollectionId: ntsj_collection
+      - RekognitionDetectOnlyPolicy: {}
+      - DynamoDBReadPolicy:
+          TableName:
+            Ref: DynamoDBTableRekognitionCollectionTable
+      - SSMParameterReadPolicy:
+          ParameterName: SlackDoorBellConfig
+  FaceSeederFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: FaceSeederFunction
+      Handler: app.lambda_handler
+      Runtime: python3.7
+      Environment:
+        Variables:
+          REKOGNITION_DB_TBL:
+            Ref: DynamoDBTableRekognitionCollectionTable
+          CONFIG_PARAM: SlackDoorBellConfig
+      Events:
+        ImageUploaded:
+          Type: S3
+          Properties:
+            Bucket:
+              Ref: FaceSeederBucket
+            Events: s3:ObjectCreated:*
+            Filter:
+              S3Key:
+                Rules:
+                - Name: suffix
+                  Value: .jpg
+      Policies:
+      - AWSLambdaExecute
+      - Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Action:
+          - s3:GetObject
+          - s3:GetObjectACL
+          Resource: '*'
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: DynamoDBTableRekognitionCollectionTable
+      - RekognitionWriteOnlyAccessPolicy:
+          CollectionId: ntsj_collection
+      - SSMParameterReadPolicy:
+          ParameterName: SlackDoorBellConfig
+  DynamoDBTableProcessedHashesTableParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: ddb_processed_hashes_table_name
+      Type: String
+      Value:
+        Ref: DynamoDBTableProcessedHashesTable
+      Description: SSM Parameter for DynamoDBTableProcessedHashesTable table name.
+  DynamoDBTableRekognitionCollectionTableParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: ddb_rekognition_table_name
+      Type: String
+      Value:
+        Ref: DynamoDBTableRekognitionCollectionTable
+      Description: SSM Parameter for DynamoDBTableRekognitionCollectionTable table
+        name.
+  SlackDoorBellBucketParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: slack_door_bell_bucket
+      Type: String
+      Value:
+        Ref: SlackDoorBellBucket
+      Description: SSM Parameter for SlackDoorBellBucket S3 Bucket name.
+  FaceSeederBucketParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: face_seeder_bucket
+      Type: String
+      Value:
+        Ref: FaceSeederBucket
+      Description: SSM Parameter for FaceSeederBucket S3 Bucket name.
+  SlackDoorBellBucket:
+    Type: AWS::S3::Bucket
+  FaceSeederBucket:
+    Type: AWS::S3::Bucket
+  DynamoDBTableProcessedHashesTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+      - AttributeName: hash
+        AttributeType: S
+      KeySchema:
+      - AttributeName: hash
+        KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: 5
+        WriteCapacityUnits: 5
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+  DynamoDBTableRekognitionCollectionTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+      - AttributeName: RekognitionId
+        AttributeType: S
+      KeySchema:
+      - AttributeName: RekognitionId
+        KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: 5
+        WriteCapacityUnits: 1
+  SlackDoorBellFunctionLambdaInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName:
+        Fn::GetAtt:
+        - SlackDoorBellFunction
+        - Arn
+      Action: lambda:InvokeFunction
+      Principal: s3.amazonaws.com
+      SourceAccount:
+        Fn::Sub: ${AWS::AccountId}
+      SourceArn:
+        Fn::GetAtt:
+        - SlackDoorBellBucket
+        - Arn
+  FaceSeederFunctionLambdaInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName:
+        Fn::GetAtt:
+        - FaceSeederFunction
+        - Arn
+      Action: lambda:InvokeFunction
+      Principal: s3.amazonaws.com
+      SourceAccount:
+        Fn::Sub: ${AWS::AccountId}
+      SourceArn:
+        Fn::GetAtt:
+        - FaceSeederBucket
+        - Arn
+  OpenCVLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: slack-doorbell-opencv
+      Description: Dependencies for SlackDoorBell
+      ContentUri: ..\..\dependencies
+      CompatibleRuntimes:
+      - python3.7
+      LicenseInfo: MIT
+      RetentionPolicy: Retain
+Outputs:
+  SlackDoorBellFunction:
+    Description: SlackDoorBell Function ARN
+    Value:
+      Fn::GetAtt:
+      - SlackDoorBellFunction
+      - Arn
+  FaceSeederFunction:
+    Description: FaceSeeder Function ARN
+    Value:
+      Fn::GetAtt:
+      - FaceSeederFunction
+      - Arn
+  SlackDoorBellFunctionIamRole:
+    Description: Implicit IAM Role created for SlackDoorBellFunction
+    Value:
+      Fn::GetAtt:
+      - SlackDoorBellFunctionRole
+      - Arn
+  FaceSeederFunctionIamRole:
+    Description: Implicit IAM Role created for FaceSeederFunction
+    Value:
+      Fn::GetAtt:
+      - FaceSeederFunctionRole
+      - Arn
+  DynamoDBTableProcessedHashesTableParameter:
+    Description: SSM Parameter for DynamoDBTableProcessedHashesTable table name
+    Value:
+      Ref: DynamoDBTableProcessedHashesTableParameter
+  DynamoDBTableRekognitionCollectionTableParameter:
+    Description: SSM Parameter for DynamoDBTableRekognitionCollectionTable table name
+    Value:
+      Ref: DynamoDBTableRekognitionCollectionTableParameter
+  SlackDoorBellBucketParameter:
+    Description: SSM Parameter for SlackDoorBellBucket S3 Bucket name
+    Value:
+      Ref: SlackDoorBellBucketParameter
+  FaceSeederBucketParameter:
+    Description: SSM Parameter for FaceSeederBucket S3 Bucket name
+    Value:
+      Ref: FaceSeederBucketParameter
+  SlackDoorBellBucket:
+    Description: S3 Bucket for receiving images for processing to slack
+    Value:
+      Fn::GetAtt:
+      - SlackDoorBellBucket
+      - Arn
+  FaceSeederBucket:
+    Description: S3 Bucket for receiving images to build a face index
+    Value:
+      Fn::GetAtt:
+      - FaceSeederBucket
+      - Arn
+  DynamoDBTableProcessedHashesTable:
+    Description: DynamoDB Table for storing processed image hashes w/ 24 hour TTL
+    Value:
+      Fn::GetAtt:
+      - DynamoDBTableProcessedHashesTable
+      - Arn
+  DynamoDBTableRekognitionCollectionTable:
+    Description: DynamoDB Table for mapping names to Rekognition IDs
+    Value:
+      Fn::GetAtt:
+      - DynamoDBTableRekognitionCollectionTable
+      - Arn
+  SlackDoorBellFunctionLambdaInvokePermission:
+    Description: Required Lambda Permission for S3 Triggers to Work
+    Value:
+      Ref: SlackDoorBellFunctionLambdaInvokePermission
+  FaceSeederFunctionLambdaInvokePermission:
+    Description: Required Lambda Permission for S3 Triggers to Work
+    Value:
+      Ref: FaceSeederFunctionLambdaInvokePermission
+  OpenCVLayer:
+    Description: OpenCV Python Library for image annotation
+    Value:
+      Ref: OpenCVLayer
