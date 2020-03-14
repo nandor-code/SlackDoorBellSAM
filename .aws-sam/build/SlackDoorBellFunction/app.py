@@ -86,7 +86,7 @@ def update_proccessed_hash(hash):
     print ("Updating DB with hash: " + hash)
     
     # expires in a day
-    expireTime = int(time.time() + 24*3600) 
+    expireTime = int(time.time() + 5*3600) 
 
     response = dynamodb.put_item(
         TableName=PROCESS_DB_TBL,

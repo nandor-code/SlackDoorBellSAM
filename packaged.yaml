@@ -39,7 +39,7 @@ Resources:
   SlackDoorBellFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: s3://published-apps/acf0ea86f131498acfb6ad8ba494f601
+      CodeUri: s3://published-apps/60a059e37f775ec440f62a96458841ca
       Handler: app.lambda_handler
       Runtime: python3.7
       Layers:
@@ -86,7 +86,7 @@ Resources:
   FaceSeederFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: s3://published-apps/c5b6999c913300d73d543bef53b86d46
+      CodeUri: s3://published-apps/20b4f726f6c75c31e005dc2956412298
       Handler: app.lambda_handler
       Runtime: python3.7
       Environment:
